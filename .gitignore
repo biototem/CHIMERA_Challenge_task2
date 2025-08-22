@@ -9,3 +9,5 @@ sys.ini*
 *.log
 *.txt
 output/*
+*/__pycache__/*
+*.zip
