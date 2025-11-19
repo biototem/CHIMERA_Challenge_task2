@@ -9,12 +9,8 @@ This repository contains the implementation for the CHIMERA Challenge Task 2, fo
 - [Installation](#installation)
 - [Project Structure](#project-structure)
 - [Workflow](#workflow)
-- [Usage](#usage)
 - [Configuration](#configuration)
 - [Docker Deployment](#docker-deployment)
-- [Model Components](#model-components)
-- [Results](#results)
-- [Contributing](#contributing)
 - [License](#license)
 
 
@@ -143,4 +139,14 @@ If you use this code in your research, please cite:
 
 ```bibtex
 @article{chimera2025}
+```
+```bibtex
+@misc{zhang2023attentionchallenging,
+      title={Attention-Challenging Multiple Instance Learning for Whole Slide Image Classification}, 
+      author={Yunlong Zhang and Honglin Li and Yuxuan Sun and Sunyi Zheng and Chenglu Zhu and Lin Yang},
+      year={2023},
+      eprint={2311.07125},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
 ```
