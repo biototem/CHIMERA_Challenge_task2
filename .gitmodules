@@ -1,0 +1,3 @@
+[submodule "ACMIL"]
+	path = ACMIL
+	url = https://github.com/dazhangyu123/ACMIL.git
