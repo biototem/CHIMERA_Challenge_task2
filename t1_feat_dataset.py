@@ -53,8 +53,8 @@ class FeatDataset_train(Dataset):
             noise = np.random.normal(size=feat.shape, scale=feat.std()*np.random.uniform(0.01, 0.2)).astype(feat.dtype)
             feat += noise
 
-        tmp_linc_feat = tmp_linc_feat.repeat([feat.shape[0]], axis=0)
-        feat = np.concatenate([feat,tmp_linc_feat],axis=1)
+        # tmp_linc_feat = tmp_linc_feat.repeat([feat.shape[0]], axis=0)
+        # feat = np.concatenate([feat,tmp_linc_feat],axis=1)
 
         return torch.as_tensor(feat,dtype=torch.float32) , torch.as_tensor(coords,dtype=torch.float32) , torch.tensor(cls),tmp_linc_feat_new
         # return tmp_linc_feat_new , torch.as_tensor(coords,dtype=torch.float32) , torch.tensor(cls),tmp_linc_feat_new
@@ -83,9 +83,9 @@ class FeatDataset_test(Dataset):
 
         feat = np.load(feat_file+'_HE.npy', mmap_mode='c', allow_pickle=False)[:,0,:]
         coords = np.load(coord_file+'_HE.npy', mmap_mode='c', allow_pickle=False)[:,:4]
-        tmp_linc_feat = tmp_linc_feat.repeat([feat.shape[0]], axis=0)
+        # tmp_linc_feat = tmp_linc_feat.repeat([feat.shape[0]], axis=0)
 
-        feat = np.concatenate([feat,tmp_linc_feat],axis=1)
+        # feat = np.concatenate([feat,tmp_linc_feat],axis=1)
 
         return torch.as_tensor(feat,dtype=torch.float32) , torch.as_tensor(coords,dtype=torch.float32) , torch.tensor(cls,dtype=torch.float32),tmp_linc_feat_new
 
