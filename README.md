@@ -2,7 +2,15 @@
 
 ## Overview
 
-This repository contains the implementation for the CHIMERA Challenge Task 2, focusing on Multiple Instance Learning (MIL) with attention mechanisms for whole slide image (WSI) classification. The framework performs feature extraction from WSIs, trains attention-based MIL models using 5-fold cross-validation, and generates predictions for medical image analysis.
+This repository contains the implementation for the [CHIMERA Challenge](https://chimera.grand-challenge.org/chimera/) Task 2, focusing on Multiple Instance Learning (MIL) with attention mechanisms for whole slide image (WSI) classification. The framework performs feature extraction from WSIs, trains attention-based MIL models using 5-fold cross-validation, and generates predictions for medical image analysis.
+
+### Download Training Data
+[dataset-download](https://chimera.grand-challenge.org/dataset-download/#license)
+
+### License
+The data is released under a permissive CC-BY-NC-SA license. All users must comply with a publication embargo: publishing results from studies using CHIMERA challenge data is strictly forbidden until the CHIMERA challenge journal paper and its baseline journal paper are published.
+
+### 
 
 ## Table of Contents
 
@@ -135,11 +143,8 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 
 ## Citation
-If you use this code in your research, please cite:
 
-```bibtex
-@article{chimera2025}
-```
+And if you use this code in your research, please cite:
 ```bibtex
 @misc{zhang2023attentionchallenging,
       title={Attention-Challenging Multiple Instance Learning for Whole Slide Image Classification}, 
