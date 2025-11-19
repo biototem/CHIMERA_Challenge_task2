@@ -1,6 +1,5 @@
 from architecture.transformer import AttnMIL6 as AttnMIL
 from torch import nn
-import pickle
 from t1_feat_dataset import FeatDataset_train,FeatDataset_test
 from tqdm import tqdm
 from sklearn.metrics import f1_score, auc, roc_curve

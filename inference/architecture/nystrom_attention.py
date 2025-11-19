@@ -4,6 +4,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, reduce
 
+# helper functions
 
 def exists(val):
     return val is not None

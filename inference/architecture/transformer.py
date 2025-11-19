@@ -1,9 +1,13 @@
 import math
-from torch import  Tensor
+import os
+import torch
+from torch import nn, Tensor
 import torch.nn.functional as F
 from architecture.network import Classifier_1fc, DimReduction, DimReduction1
+from einops import repeat
 from .nystrom_attention import NystromAttention
 from modules.emb_position import *
+
 
 def pos_enc_1d(D, len_seq):
     if D % 2 != 0:

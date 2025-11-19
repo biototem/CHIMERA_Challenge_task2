@@ -1,18 +1,22 @@
 import math
-from torch import  Tensor
+import os
+import torch
+from torch import nn, Tensor
 import torch.nn.functional as F
 from architecture.network import Classifier_1fc, DimReduction, DimReduction1
+from einops import repeat
 from .nystrom_attention import NystromAttention
 from modules.emb_position import *
 
 def pos_enc_1d(D, len_seq):
+    
     if D % 2 != 0:
         raise ValueError("Cannot use sin/cos positional encoding with "
                          "odd dim (got dim={:d})".format(D))
     pe = torch.zeros(len_seq, D)
     position = torch.arange(0, len_seq).unsqueeze(1)
     div_term = torch.exp((torch.arange(0, D, 2, dtype=torch.float) *
-                          -(math.log(10000.0) / D)))
+                         -(math.log(10000.0) / D)))
     pe[:, 0::2] = torch.sin(position.float() * div_term)
     pe[:, 1::2] = torch.cos(position.float() * div_term)
 
@@ -33,7 +37,6 @@ class MLP(nn.Module):
         x = self.fc2(x)
         return x
 
-
 class MLP_single_layer(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(MLP_single_layer, self).__init__()
@@ -42,7 +45,6 @@ class MLP_single_layer(nn.Module):
     def forward(self, x):
         x = self.fc(x)
         return x
-
 
 class TransformWrapper1(nn.Module):
     def __init__(self, conf):
@@ -75,16 +77,13 @@ class TransformWrapper1(nn.Module):
         feat_bag = self.bag_attention(v, attns.softmax(dim=-1).mean(1, keepdim=True))
 
         return torch.cat(outputs, dim=0), self.Slide_classifier(feat_bag), attns
-
-
 class TransformWrapper(nn.Module):
     def __init__(self, conf):
         super(TransformWrapper, self).__init__()
         self.dimreduction = DimReduction(conf.D_feat, conf.D_inner)
         self.sub_attention = nn.ModuleList()
         for i in range(conf.n_token):
-            self.sub_attention.append(
-                MutiHeadAttention(conf.D_inner, 8, n_masked_patch=conf.n_masked_patch, mask_drop=conf.mask_drop))
+            self.sub_attention.append(MutiHeadAttention(conf.D_inner, 8, n_masked_patch=conf.n_masked_patch, mask_drop=conf.mask_drop))
         self.bag_attention = MutiHeadAttention1(conf.D_inner, 8)
         self.q = nn.Parameter(torch.zeros((1, conf.n_token, conf.D_inner)))
         nn.init.normal_(self.q, std=1e-6)
@@ -121,13 +120,13 @@ class MutiHeadAttention2(nn.Module):
     """
 
     def __init__(
-            self,
-            embedding_dim: int,
-            num_heads: int,
-            downsample_rate: int = 1,
-            dropout: float = 0.1,
-            n_masked_patch: int = 0,
-            mask_drop: float = 0.0
+        self,
+        embedding_dim: int,
+        num_heads: int,
+        downsample_rate: int = 1,
+        dropout: float = 0.1,
+        n_masked_patch: int = 0,
+        mask_drop: float = 0.0
     ) -> None:
         super().__init__()
         self.n_masked_patch = n_masked_patch
@@ -180,9 +179,9 @@ class MutiHeadAttention2(nn.Module):
             n_masked_patch = min(self.n_masked_patch, c)
             _, indices = torch.topk(attn, n_masked_patch, dim=-1)
             indices = indices.reshape(b * h * q, -1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
-            random_mask = torch.ones(b * h * q, c).to(attn.device)
+            random_mask = torch.ones(b*h*q, c).to(attn.device)
             random_mask.scatter_(-1, masked_indices, 0)
             attn = attn.masked_fill(random_mask.reshape(b, h, q, -1) == 0, -1e9)
 
@@ -196,7 +195,6 @@ class MutiHeadAttention2(nn.Module):
 
         return out1[0], attn_out[0]
 
-
 class MutiHeadAttention(nn.Module):
     """
     An attention layer that allows for downscaling the size of the embedding
@@ -204,13 +202,13 @@ class MutiHeadAttention(nn.Module):
     """
 
     def __init__(
-            self,
-            embedding_dim: int,
-            num_heads: int,
-            downsample_rate: int = 1,
-            dropout: float = 0.1,
-            n_masked_patch: int = 0,
-            mask_drop: float = 0.0
+        self,
+        embedding_dim: int,
+        num_heads: int,
+        downsample_rate: int = 1,
+        dropout: float = 0.1,
+        n_masked_patch: int = 0,
+        mask_drop: float = 0.0
     ) -> None:
         super().__init__()
         self.n_masked_patch = n_masked_patch
@@ -260,9 +258,9 @@ class MutiHeadAttention(nn.Module):
             n_masked_patch = min(self.n_masked_patch, c)
             _, indices = torch.topk(attn, n_masked_patch, dim=-1)
             indices = indices.reshape(b * h * q, -1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
-            random_mask = torch.ones(b * h * q, c).to(attn.device)
+            random_mask = torch.ones(b*h*q, c).to(attn.device)
             random_mask.scatter_(-1, masked_indices, 0)
             attn = attn.masked_fill(random_mask.reshape(b, h, q, -1) == 0, -1e9)
 
@@ -276,7 +274,6 @@ class MutiHeadAttention(nn.Module):
         out1 = self.layer_norm(out1)
 
         return out1[0], attn_out[0]
-
 
 class MutiHeadAttention1(nn.Module):
     """
@@ -330,6 +327,7 @@ class MutiHeadAttention1(nn.Module):
         return out1[0]
 
 
+
 class Attention_Gated(nn.Module):
     def __init__(self, L=512, D=128, K=1):
         super(Attention_Gated, self).__init__()
@@ -354,8 +352,9 @@ class Attention_Gated(nn.Module):
         ## x: N x L
         A_V = self.attention_V(x)  # NxD
         A_U = self.attention_U(x)  # NxD
-        A = self.attention_weights(A_V * A_U)  # NxK
+        A = self.attention_weights(A_V * A_U) # NxK
         A = torch.transpose(A, 1, 0)  # KxN
+
 
         return A  ### K x N
 
@@ -367,16 +366,17 @@ class AttnMIL(nn.Module):
         self.attention = Attention_Gated(conf.D_inner, D, 1)
         self.classifier = Classifier_1fc(conf.D_inner, conf.n_class, droprate)
 
-    def forward(self, x):  ## x: N x L
+    def forward(self, x): ## x: N x L
         x = x[0]
         med_feat = self.dimreduction(x)
         A = self.attention(med_feat)  ## K x N
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, med_feat)  ## K x L
+        afeat = torch.mm(A, med_feat) ## K x L
         outputs = self.classifier(afeat)
         return outputs, A_out.unsqueeze(0)
+
 
 
 class AttnMIL1(nn.Module):
@@ -392,17 +392,19 @@ class AttnMIL1(nn.Module):
         self.Slide_classifier = Classifier_1fc(conf.D_inner, conf.n_class, droprate)
         self.mask_drop = conf.mask_drop
 
-    def forward(self, x, use_attention_mask=False):  ## x: N x L
+
+    def forward(self, x, use_attention_mask=False): ## x: N x L
         x = x[0]
         x = self.dimreduction(x)
         A = self.attention(x)  ## K x N
+
 
         if self.n_masked_patch > 0 and use_attention_mask:
             # Get the indices of the top-k largest values
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -423,7 +425,7 @@ class AttnMIL1(nn.Module):
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, x)  ## K x L
+        afeat = torch.mm(A, x) ## K x L
         outputs = []
         for i, head in enumerate(self.classifier):
             outputs.append(head(afeat[i]))
@@ -442,7 +444,7 @@ class AttnMIL4(nn.Module):
         self.n_token = conf.n_token
         self.mask_drop = conf.mask_drop
 
-    def forward(self, x, is_train=True):  ## x: N x L
+    def forward(self, x, is_train=True): ## x: N x L
         x = x[0]
         med_feat = self.dimreduction(x)
         A = self.attention(med_feat)  ## K x N
@@ -452,7 +454,7 @@ class AttnMIL4(nn.Module):
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -460,7 +462,7 @@ class AttnMIL4(nn.Module):
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, med_feat)  ## K x L
+        afeat = torch.mm(A, med_feat) ## K x L
         outputs = []
         # max_conf = []
         for i, head in enumerate(self.classifier):
@@ -469,7 +471,6 @@ class AttnMIL4(nn.Module):
             # max_conf.append(torch.softmax(output, dim=0).amax())
         outputs = torch.stack(outputs)
         return outputs, outputs.mean(dim=0, keepdim=True), A_out.unsqueeze(0)
-
 
 class AttnMIL3(nn.Module):
     def __init__(self, conf, D=128, droprate=0):
@@ -484,7 +485,7 @@ class AttnMIL3(nn.Module):
         # self.Slide_classifier = Classifier_1fc(conf.D_inner, conf.n_class, droprate)
         self.mask_drop = conf.mask_drop
 
-    def forward(self, x, is_train=True):  ## x: N x L
+    def forward(self, x, is_train=True): ## x: N x L
         x = x[0]
         med_feat = self.dimreduction(x)
         A = self.attention(med_feat)  ## K x N
@@ -494,7 +495,7 @@ class AttnMIL3(nn.Module):
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -502,7 +503,7 @@ class AttnMIL3(nn.Module):
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, med_feat)  ## K x L
+        afeat = torch.mm(A, med_feat) ## K x L
         outputs = []
         # max_conf = []
         for i, head in enumerate(self.classifier):
@@ -511,6 +512,7 @@ class AttnMIL3(nn.Module):
             # max_conf.append(torch.softmax(output, dim=0).amax())
         outputs = torch.stack(outputs)
         return outputs, outputs.max(axis=0)[0].unsqueeze(0), A_out.unsqueeze(0)
+
 
 
 # AttnMIL5 基本没啥用
@@ -527,7 +529,7 @@ class AttnMIL5(nn.Module):
         self.Slide_classifier = Classifier_1fc(conf.D_inner, conf.n_class, droprate)
         self.mask_drop = conf.mask_drop
 
-    def forward(self, x, is_train=True):  ## x: N x L
+    def forward(self, x, is_train=True): ## x: N x L
         x = x[0]
         med_feat = self.dimreduction(x)
         A = self.attention(med_feat)  ## K x N
@@ -537,7 +539,7 @@ class AttnMIL5(nn.Module):
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -545,7 +547,7 @@ class AttnMIL5(nn.Module):
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, med_feat)  ## K x L
+        afeat = torch.mm(A, med_feat) ## K x L
         outputs = []
         # max_conf = []
         for i, head in enumerate(self.classifier):
@@ -554,7 +556,6 @@ class AttnMIL5(nn.Module):
             # max_conf.append(torch.softmax(output, dim=0).amax())
         outputs = torch.stack(outputs)
         return outputs, self.Slide_classifier(afeat).amax(dim=0).unsqueeze(0), A_out.unsqueeze(0)
-
 
 class AttnMIL2(nn.Module):
     def __init__(self, conf, D=128, droprate=0):
@@ -569,7 +570,7 @@ class AttnMIL2(nn.Module):
         self.n_token = conf.n_token
         self.Slide_classifier = Classifier_1fc(conf.D_inner, conf.n_class, droprate)
 
-    def forward(self, x, is_train=True):  ## x: N x L
+    def forward(self, x, is_train=True): ## x: N x L
         x = x[0]
         med_feat = self.dimreduction(x)
         A = self.attention1(med_feat)  ## K x N
@@ -579,7 +580,7 @@ class AttnMIL2(nn.Module):
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * 0.2)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * 0.2)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -587,7 +588,7 @@ class AttnMIL2(nn.Module):
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, med_feat)  ## K x L
+        afeat = torch.mm(A, med_feat) ## K x L
         outputs = []
         for i, head in enumerate(self.classifier):
             outputs.append(head(afeat[i]))
@@ -597,44 +598,32 @@ class AttnMIL2(nn.Module):
         return torch.stack(outputs, dim=0), self.Slide_classifier(afeat), A_out.unsqueeze(0)
 
 
-from torch.nn import BatchNorm1d, Sequential, Linear, ReLU, Tanh, LeakyReLU, ELU, SELU, GELU, Sigmoid, Dropout
-
-
 class AttnMIL6(nn.Module):
-    def __init__(self, D_feat=768, n_class=2, n_token=5, D_inner=512, D=512, n_masked_patch=10, mask_drop=0.5,
-                 droprate=0):
-        D_inner = 512
-        D = 512
+    def __init__(self,D_feat=768, n_class=2, n_token=5, D_inner = 512,D=512, n_masked_patch = 10 ,mask_drop = 0.5, droprate=0):
         super(AttnMIL6, self).__init__()
         self.dimreduction = DimReduction(D_feat, D_inner)
         self.attention = Attention_Gated(D_inner, D, n_token)
         self.classifier = nn.ModuleList()
         for i in range(n_token):
-            self.classifier.append(Classifier_1fc(512, n_class, droprate))
+            self.classifier.append(Classifier_1fc(D_inner, n_class, droprate))
         self.n_masked_patch = n_masked_patch
         self.n_token = n_token
-        self.Slide_classifier = Classifier_1fc(512+128, n_class, droprate)
+        self.Slide_classifier = Classifier_1fc(D_inner, n_class, droprate)
         self.mask_drop = mask_drop
-        self.mDim = 42
-        self.fc = Sequential(
-            Linear(self.mDim, 128),
-            ELU(),
-        )
 
-    def forward(self, x, linc, use_attention_mask=False):  ## x: N x L
+
+    def forward(self, x, use_attention_mask=False): ## x: N x L
         x = x[0]
-        linc = linc[0]
         x = self.dimreduction(x)
         A = self.attention(x)  ## K x N
 
-        k11 = self.fc(linc)
 
         if self.n_masked_patch > 0 and use_attention_mask:
             # Get the indices of the top-k largest values
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -642,28 +631,26 @@ class AttnMIL6(nn.Module):
 
         A_out = A
         A = F.softmax(A, dim=1)  # softmax over N
-        afeat = torch.mm(A, x)  ## K x L
+        afeat = torch.mm(A, x) ## K x L
         outputs = []
         for i, head in enumerate(self.classifier):
             outputs.append(head(afeat[i]))
-            # outputs.append(head(torch.concatenate([afeat[i], k11[0]])))
         bag_A = F.softmax(A_out, dim=1).mean(0, keepdim=True)
         bag_feat = torch.mm(bag_A, x)
-        bag_feat1 = torch.concatenate([bag_feat, k11], dim=1)
+        return torch.stack(outputs, dim=0), self.Slide_classifier(bag_feat), A_out.unsqueeze(0)
 
-        return torch.stack(outputs, dim=0), self.Slide_classifier(bag_feat1), A_out.unsqueeze(0)
-
-    def forward_feature(self, x, use_attention_mask=False):  ## x: N x L
+    def forward_feature(self, x, use_attention_mask=False): ## x: N x L
         x = x[0]
         x = self.dimreduction(x)
         A = self.attention(x)  ## K x N
+
 
         if self.n_masked_patch > 0 and use_attention_mask:
             # Get the indices of the top-k largest values
             k, n = A.shape
             n_masked_patch = min(self.n_masked_patch, n)
             _, indices = torch.topk(A, n_masked_patch, dim=-1)
-            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:, :int(n_masked_patch * self.mask_drop)]
+            rand_selected = torch.argsort(torch.rand(*indices.shape), dim=-1)[:,:int(n_masked_patch * self.mask_drop)]
             masked_indices = indices[torch.arange(indices.shape[0]).unsqueeze(-1), rand_selected]
             random_mask = torch.ones(k, n).to(A.device)
             random_mask.scatter_(-1, masked_indices, 0)
@@ -671,8 +658,10 @@ class AttnMIL6(nn.Module):
 
         A_out = A
         bag_A = F.softmax(A_out, dim=1).mean(0, keepdim=True)
+        print(bag_A.shape,x.shape)
         bag_feat = torch.mm(bag_A, x)
         return bag_feat
+
 
 
 class TransLayer(nn.Module):

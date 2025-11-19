@@ -4,6 +4,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, reduce
 
+# helper functions
 
 def exists(val):
     return val is not None
@@ -37,13 +38,11 @@ class NystromAttention(nn.Module):
         residual = True,
         residual_conv_kernel = 33,
         eps = 1e-8,
-        dropout = 0.,
-        n_token = 1
+        dropout = 0.
     ):
         super().__init__()
         self.eps = eps
         inner_dim = heads * dim_head
-        self.n_token = n_token
 
         self.num_landmarks = num_landmarks
         self.pinv_iterations = pinv_iterations
@@ -140,10 +139,10 @@ class NystromAttention(nn.Module):
         out = self.to_out(out)
         out = out[:, -n:]
         if return_attn:
-            attn1 = attn1[:,:,:self.n_token] @ attn2
+            attn1 = attn1[:,:,0].unsqueeze(-2) @ attn2
             attn1 = (attn1 @ attn3)
         
-            return out, attn1.mean(1)
+            return out, attn1[:,:,0,-n+1:]
 
         return out
 

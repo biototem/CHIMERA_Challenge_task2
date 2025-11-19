@@ -1,7 +1,16 @@
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
+# vpt
+import math
 import numpy as np
 import torch
 import torch.nn as nn
+import torchvision as tv
+from functools import reduce
+from operator import mul
+
 
 class FCLayer(nn.Module):
     def __init__(self, in_size, out_size=1):
