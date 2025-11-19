@@ -1,3 +1,6 @@
 [submodule "ACMIL"]
 	path = ACMIL
 	url = https://github.com/dazhangyu123/ACMIL.git
+[submodule "CHIMERA_minimal_baseline"]
+	path = CHIMERA_minimal_baseline
+	url = https://github.com/nadieh/CHIMERA_minimal_baseline.git
